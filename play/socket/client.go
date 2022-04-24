@@ -6,9 +6,9 @@ package socket
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
+	"shootingplane/entity/models"
 	"time"
 )
 
@@ -38,7 +38,7 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	ID       uuid.UUID `json:"id"`
+	ID      uint `json:"id"`
 	Name	string
 	IDRoom  uint
 	platform *Platform
@@ -52,17 +52,18 @@ func (client *Client) GetName() string {
 	return client.Name
 }
 
-func (client *Client) GetID() uuid.UUID {
+func (client *Client) GetID() uint {
 	return client.ID
 }
 
-func NewClient(conn *websocket.Conn, platform *Platform, name string, ID uint) *Client {
+func NewClient(conn *websocket.Conn, platform *Platform, user *models.User, roomID uint) *Client {
 	client := &Client{
-		Name:     name,
+		ID: user.GetId(),
+		Name:     user.GetName(),
 		conn:     conn,
 		platform: platform,
 		send:     make(chan []byte, 256),
-		IDRoom:   ID,
+		IDRoom:   roomID,
 	}
 
 	return client
@@ -133,7 +134,7 @@ func (client *Client) WritePump() {
 
 func (client *Client) disconnect() {
 	client.platform.unregister <- client
-	room:=client.platform.findRoomByID(client.IDRoom)
+	room:=client.platform.FindRoomByID(client.IDRoom)
 	room.unregister<-client
 	close(client.send)
 	client.conn.Close()
@@ -147,18 +148,18 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 		return
 	}
 
-	message.Sender = client
+	message.Sender = client.ID
 
 	switch message.Event {
 	case GameEvent:
-		roomID := message.Target.GetId()
-		if room := client.platform.findRoomByID(roomID); room != nil {
+		roomID := message.Target
+		if room := client.platform.FindRoomByID(roomID); room != nil {
 			room.broadcast <- &message
 		}
 
 	case SocietyEvent:
-		roomID := message.Target.GetId()
-		if room := client.platform.findRoomByID(roomID); room != nil {
+		roomID := message.Target
+		if room := client.platform.FindRoomByID(roomID); room != nil {
 			room.broadcast <- &message
 		}
 	}
@@ -205,37 +206,27 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 //
 //}
 //
-//func (client *Client) joinRoom(roomName string, sender User) *Room {
-//
-//	room := client.platform.findRoomByName(roomName)
-//	if room == nil {
-//		room = client.platform.createRoom(roomName, sender != nil)
-//	}
-//
-//	// Don't allow to join private rooms through public room message
-//	if sender == nil && room.Private {
-//		return nil
-//	}
-//
-//	if !client.isInRoom(room) {
-//
-//		client.rooms[room] = true
-//		room.register <- client
-//
-//		client.notifyRoomJoined(room, sender)
-//	}
-//
-//	return room
-//
-//}
-//
-//func (client *Client) isInRoom(room *Room) bool {
-//	if _, ok := client.rooms[room]; ok {
-//		return true
-//	}
-//
-//	return false
-//}
+func (client *Client) JoinRoom(room_id uint, sender models.User) *Room {
+
+	room := client.platform.FindRoomByID(room_id)
+	if client.platform.rooms[room] == false {
+		return nil
+	}
+
+	if !client.isInRoom(room) {
+		room.register <- client
+	}
+	//}
+
+	return room
+
+}
+func (client *Client) isInRoom(room *Room) bool {
+	if _, ok := room.clients[client.ID]; ok {
+		return true
+	}
+	return false
+}
 //
 //func (client *Client) inviteTargetUser(target models.User, room *Room) {
 //	inviteMessage := &Message{
@@ -246,16 +237,4 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 //	}
 //}
 //
-//func (client *Client) notifyRoomJoined(room *Room, sender models.User) {
-//	message := Message{
-//		Action: RoomJoinedAction,
-//		Target: room,
-//		Sender: sender,
-//	}
-//
-//	client.send <- message.encode()
-//}
 
-func (client *Client) GetId() string {
-	return client.ID.String()
-}

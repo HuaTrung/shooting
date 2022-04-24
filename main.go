@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	server := socket.NewPlatformServer()
+	pg:=database.GetPgClient()
+	server := socket.NewPlatformServer(pg)
 	go server.Run()
 	// initialize new gin engine (for server)
 	r := gin.Default()
@@ -21,7 +22,6 @@ func main() {
 
 	// set models & firebase auth to gin context with a middleware to all incoming request
 
-	pg:=database.GetPgClient()
 	r.Use(func(c *gin.Context) {
 		c.Set("postgres",pg)
 		c.Set("wsserver",server)
@@ -31,7 +31,8 @@ func main() {
 
 	r.POST("/user", api.CreateUser)
 	r.POST("/room", api.CreateRoom)
-	r.GET("room/:id/ws", api.SocketService)
+	r.GET("room/:id/ws", api.SocketServiceRoom)
+	r.GET("rooms/ws", api.SocketServicePlatform)
 	/* ---------------------------  Private routes  --------------------------- */
 
 	// private := r.Group("/shoot")

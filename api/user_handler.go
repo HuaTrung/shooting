@@ -48,9 +48,9 @@ func CreateRoom(c *gin.Context) {
 			c.JSON(200, "No available room")
 		} else {
 			// generate socket for a room
-			socket.NewRoom(server,res.Name,res.ID)
+			//r:=socket.NewRoom(res.Name,res.ID)
+			server.ActiveRoom(server.FindRoomByID(res.ID))
 			c.JSON(200, res)
 		}
-
 	}
 }

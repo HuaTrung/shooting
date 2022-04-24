@@ -13,6 +13,8 @@ type Room struct {
 	Game       string
 	HasPassword bool
 	IsAcquired bool
+	PlayerA 	uint 	`sql:"DEFAULT:NULL"`
+	PlayerB 	uint	`sql:"DEFAULT:NULL"`
 	CreatedAt  *time.Time
 	Password 	string
 }

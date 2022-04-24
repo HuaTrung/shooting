@@ -1,4 +1,11 @@
 package repositories
+
+import (
+	"gorm.io/gorm"
+	"log"
+	"shootingplane/entity/models"
+)
+
 //
 //import (
 //	"database/sql"
@@ -23,22 +30,22 @@ package repositories
 //	checkErr(err)
 //}
 //
-//func (repo *UserRepository) FindUserById(ID string) models.User {
-//
-//	row := repo.Db.QueryRow("SELECT id, name FROM user where id = ? LIMIT 1", ID)
-//
-//	var user User
-//
-//	if err := row.Scan(&user.Id, &user.Name); err != nil {
-//		if err == sql.ErrNoRows {
-//			return nil
-//		}
-//		panic(err)
-//	}
-//
-//	return &user
-//
-//}
+func FindUserByName(Db *gorm.DB,Name string) *models.User {
+	tb := Db.Table("personal.users")
+	var user models.User
+	row := tb.Unscoped().First(&user,"Name = ?",Name)
+	if row.Error!=nil{
+		log.Print(row.Error)
+		return nil
+	} else {
+		if user.GetId()==0{
+			return nil
+		} else {
+			return &user
+		}
+	}
+
+}
 //
 //func (repo *UserRepository) GetAllUsers() []models.User {
 //
